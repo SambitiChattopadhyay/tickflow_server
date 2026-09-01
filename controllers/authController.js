@@ -67,11 +67,6 @@ const loginUser = async (req, res) => {
       password,
       user.password
     );
-    const token = jwt.sign(
-    { id: user._id },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-    );
 
     if (!passwordMatch) {
       return res.status(400).json({
@@ -79,14 +74,29 @@ const loginUser = async (req, res) => {
       });
     }
 
+    //create token
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Store JWT in cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
     res.json({
       message: "Login successful",
-      token,
       user: {
         id: user._id,
         email: user.email,
       },
     });
+
   } catch (error) {
     console.error(error);
 
