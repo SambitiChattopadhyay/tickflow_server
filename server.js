@@ -7,6 +7,7 @@ const connectDB = require("./config/db");//"Give me the connectDB function defin
 
 const authRoutes = require("./routes/authRoutes");//Load all the authentication-related routes from authRoutes.js."
 const userRoutes = require("./routes/userRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 
 const {
   notFound,
@@ -33,6 +34,7 @@ app.use(cookieParser());//This parses incoming cookies.
 // Routes:
 app.use("/auth", authRoutes);//connects those routes to your server.the actual endpoints become:POST /auth/register,POST /auth/login...Whenever a request starts with /auth, let authRoutes decide what to do."
 app.use("/api/users", userRoutes);
+app.use("/api/activities", activityRoutes);
 
 // 404 handler
 app.use(notFound);//This comes after your routes.Express processes things in order.If the request doesn't match any route, (notFound) middleware gets a chance to handle it.
