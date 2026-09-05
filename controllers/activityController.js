@@ -31,6 +31,44 @@ const startActivity = async (req, res) => {
   }
 };
 
+// STOP ACTIVITY
+const stopActivity = async (req, res) => {
+  try {
+    const activity = await Activity.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+      status: "active",
+    });
+
+    if (!activity) {
+      return res.status(404).json({
+        message: "Active activity not found",
+      });
+    }
+
+    const endTime = new Date();
+
+    activity.endTime = endTime;
+    activity.duration = endTime - activity.startTime;
+    activity.status = "completed";
+
+    await activity.save();
+
+    res.status(200).json({
+      message: "Activity completed successfully",
+      activity,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   startActivity,
+  stopActivity,
 };
