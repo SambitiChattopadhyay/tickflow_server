@@ -72,7 +72,7 @@ const stopActivity = async (req, res) => {
 const getActivities = async (req, res) => {
   try {
     const activities = await Activity.find({
-      user: req.user.id,
+      user: req.user.id, //This means User A cannot see User B's activities.
     }).sort({
       createdAt: -1,
     });
@@ -90,8 +90,53 @@ const getActivities = async (req, res) => {
   }
 };
 
+// GET DAILY SUMMARY
+const getDailySummary = async (req, res) => {
+  try {
+    // Start of today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    // Start of tomorrow
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    // Find today's completed activities
+    const activities = await Activity.find({
+      user: req.user.id,
+      status: "completed",
+      startTime: {
+        $gte: startOfDay,
+        $lt: endOfDay,
+      },
+    }).sort({
+      startTime: -1,
+    });
+
+    // Calculate total duration
+    const totalDuration = activities.reduce(
+      (total, activity) => total + activity.duration,
+      0
+    );
+
+    res.status(200).json({
+      date: startOfDay,
+      activities,
+      totalDuration,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   startActivity,
   stopActivity,
   getActivities,
+  getDailySummary,
 };
