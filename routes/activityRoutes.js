@@ -8,6 +8,7 @@ const {
   stopActivity,
   getActivities,
   getDailySummary,
+  getActiveActivity,
 } = require("../controllers/activityController");
 
 //Because it uses: protect you must be logged in.
@@ -15,6 +16,8 @@ const {
 // Specific/static routes:(fixed URL)
 // Start an activity.
 router.post("/start", protect, startActivity);
+// Get current active activity
+router.get("/active", protect, getActiveActivity);
 // Get today's activity summary
 router.get("/summary/today", protect, getDailySummary);//can technically be in either order..best practice—more specific routes are usually placed before broader/dynamic routes.
 

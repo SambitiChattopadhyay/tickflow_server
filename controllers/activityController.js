@@ -11,6 +11,17 @@ const startActivity = async (req, res) => {
       });
     }
 
+    const activeActivity = await Activity.findOne({
+    user: req.user.id,
+    status: "active",
+    });
+
+  if (activeActivity) {
+    return res.status(400).json({
+    message: "You already have an active activity",
+    });
+  }
+
     const activity = await Activity.create({
       user: req.user.id,
       name,
@@ -134,9 +145,37 @@ const getDailySummary = async (req, res) => {
   }
 };
 
+// GET CURRENT ACTIVE ACTIVITY
+const getActiveActivity = async (req, res) => {
+  try {
+    const activity = await Activity.findOne({
+      user: req.user.id,
+      status: "active",
+    });
+
+    if (!activity) {
+      return res.status(404).json({
+        message: "No active activity",
+      });
+    }
+
+    res.status(200).json({
+      activity,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   startActivity,
   stopActivity,
   getActivities,
   getDailySummary,
+  getActiveActivity,
 };
