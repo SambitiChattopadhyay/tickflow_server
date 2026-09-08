@@ -1,6 +1,6 @@
-//CRUD for tasks
 const Task = require("../models/Task");
-
+const Activity = require("../models/Activity");
+//CRUD for tasks:
 // CREATE TASK
 const createTask = async (req, res) => {
   try {
@@ -31,7 +31,6 @@ const createTask = async (req, res) => {
   }
 };
 
-
 // GET USER TASKS
 const getTasks = async (req, res) => {
   try {
@@ -41,8 +40,38 @@ const getTasks = async (req, res) => {
       createdAt: -1,
     });
 
+    // Add total tracked time for each task
+    const tasksWithTotalTime = await Promise.all(
+      tasks.map(async (task) => {
+        const totalResult = await Activity.aggregate([
+          {
+            $match: {
+              user: task.user,
+              task: task._id,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalTracked: {
+                $sum: "$duration",
+              },
+            },
+          },
+        ]);
+
+        return {
+          ...task.toObject(),
+          totalTracked:
+            totalResult.length > 0
+              ? totalResult[0].totalTracked
+              : 0,
+        };
+      })
+    );
+
     res.status(200).json({
-      tasks,
+      tasks: tasksWithTotalTime,
     });
 
   } catch (error) {
