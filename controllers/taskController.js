@@ -139,8 +139,14 @@ const deleteTask = async (req, res) => {
       });
     }
 
+    // Delete all activities related to this task
+    await Activity.deleteMany({
+      task: task._id,
+      user: req.user.id,
+    });
+
     res.status(200).json({
-      message: "Task deleted successfully",
+      message: "Task and related activities deleted successfully",
     });
 
   } catch (error) {
