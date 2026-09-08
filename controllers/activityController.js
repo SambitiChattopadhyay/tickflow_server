@@ -1,30 +1,47 @@
 const Activity = require("../models/Activity");
 
-// START ACTIVITY
+//START ACTIVITY
 const startActivity = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { taskId } = req.body;
 
-    if (!name) {
+    if (!taskId) {
       return res.status(400).json({
-        message: "Activity name is required",
+        message: "Task ID is required",
       });
     }
 
+    // Check whether user already has an active activity
     const activeActivity = await Activity.findOne({
-    user: req.user.id,
-    status: "active",
+      user: req.user.id,
+      status: "active",
     });
 
-  if (activeActivity) {
-    return res.status(400).json({
-    message: "You already have an active activity",
-    });
-  }
+    if (activeActivity) {
+      return res.status(400).json({
+        message: "You already have an active activity",
+      });
+    }
 
+    const Task = require("../models/Task");
+
+    // Find the task belonging to this user
+    const task = await Task.findOne({
+      _id: taskId,
+      user: req.user.id,
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    // Create activity linked to task
     const activity = await Activity.create({
       user: req.user.id,
-      name,
+      task: task._id,
+      name: task.title,
       startTime: new Date(),
       status: "active",
     });
@@ -33,13 +50,15 @@ const startActivity = async (req, res) => {
       message: "Activity started",
       activity,
     });
-  } catch (error) {
+
+  } //end try block
+  catch (error) {
     console.error(error);
 
     res.status(500).json({
       message: "Server error",
     });
-  }
+  }//end of catch block
 };
 
 // STOP ACTIVITY
@@ -84,7 +103,9 @@ const getActivities = async (req, res) => {
   try {
     const activities = await Activity.find({
       user: req.user.id, //This means User A cannot see User B's activities.
-    }).sort({
+    })
+    .populate("task", "title")
+    .sort({
       createdAt: -1,
     });
 

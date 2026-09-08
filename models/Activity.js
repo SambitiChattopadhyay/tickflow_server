@@ -8,6 +8,12 @@ const activitySchema = new mongoose.Schema(
       required: true,
     },
 
+    task: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Task",
+      required: true,
+    },
+
     name: {
       type: String,
       required: true,
