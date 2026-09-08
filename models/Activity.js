@@ -34,10 +34,15 @@ const activitySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    //pause logic handling
+    pausedAt: {
+      type: Date,
+      default: null,
+    },
 
     status: {
       type: String,
-      enum: ["active", "completed"],
+      enum: ["active","paused", "completed"],
       default: "active",
     },
   },

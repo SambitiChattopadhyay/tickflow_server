@@ -61,6 +61,93 @@ const startActivity = async (req, res) => {
   }//end of catch block
 };
 
+// PAUSE ACTIVITY
+const pauseActivity = async (req, res) => {
+  try {
+    const activity = await Activity.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+      status: "active",
+    });
+
+    if (!activity) {
+      return res.status(404).json({
+        message: "Active activity not found",
+      });
+    }
+
+    const pausedAt = new Date();
+
+    // Add the current running session time to duration
+    activity.duration += pausedAt - activity.startTime;
+
+    activity.pausedAt = pausedAt;
+    activity.status = "paused";
+
+    await activity.save();
+
+    res.status(200).json({
+      message: "Activity paused successfully",
+      activity,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// RESUME ACTIVITY
+const resumeActivity = async (req, res) => {
+  try {
+    const activity = await Activity.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+      status: "paused",
+    });
+
+    if (!activity) {
+      return res.status(404).json({
+        message: "Paused activity not found",
+      });
+    }
+
+    // Check whether another activity is currently active
+    const activeActivity = await Activity.findOne({
+      user: req.user.id,
+      status: "active",
+    });
+
+    if (activeActivity) {
+      return res.status(400).json({
+        message: "You already have another active activity",
+      });
+    }
+
+    // Start timing again from now
+    activity.startTime = new Date();
+    activity.pausedAt = null;
+    activity.status = "active";
+
+    await activity.save();
+
+    res.status(200).json({
+      message: "Activity resumed successfully",
+      activity,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 // STOP ACTIVITY
 const stopActivity = async (req, res) => {
   try {
@@ -79,8 +166,12 @@ const stopActivity = async (req, res) => {
     const endTime = new Date();
 
     activity.endTime = endTime;
-    activity.duration = endTime - activity.startTime;
+
+    // Add only the currently running time
+    activity.duration += endTime - activity.startTime;
+
     activity.status = "completed";
+    activity.pausedAt = null;
 
     await activity.save();
 
@@ -195,6 +286,8 @@ const getActiveActivity = async (req, res) => {
 
 module.exports = {
   startActivity,
+  pauseActivity,
+  resumeActivity,
   stopActivity,
   getActivities,
   getDailySummary,
