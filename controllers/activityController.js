@@ -262,12 +262,14 @@ const getActiveActivity = async (req, res) => {
   try {
     const activity = await Activity.findOne({
       user: req.user.id,
-      status: "active",
-    });
+      status: {
+        $in: ["active", "paused"],
+      },
+    }).populate("task", "title");
 
     if (!activity) {
       return res.status(404).json({
-        message: "No active activity",
+        message: "No current activity",
       });
     }
 
