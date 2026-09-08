@@ -5,6 +5,8 @@ const protect = require("../middleware/authMiddleware");
 //controller imports
 const {
   startActivity,
+  pauseActivity,
+  resumeActivity,
   stopActivity,
   getActivities,
   getDailySummary,
@@ -22,6 +24,10 @@ router.get("/active", protect, getActiveActivity);
 router.get("/summary/today", protect, getDailySummary);//can technically be in either order..best practice—more specific routes are usually placed before broader/dynamic routes.
 
 //Dynamic routes:(URL has a variable/placeholder whose value changes)
+// Pause an activity
+router.put("/pause/:id", protect, pauseActivity);
+// Resume an activity
+router.put("/resume/:id", protect, resumeActivity);
 // Stop an activity
 router.put("/stop/:id", protect, stopActivity);
 
