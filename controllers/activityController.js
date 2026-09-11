@@ -1,67 +1,47 @@
 const Activity = require("../models/Activity");
+const Task = require("../models/Task");
 
-//START ACTIVITY
 const startActivity = async (req, res) => {
   try {
     const { taskId } = req.body;
 
-    if (!taskId) {
-      return res.status(400).json({
-        message: "Task ID is required",
-      });
-    }
+    if (!taskId)
+      return res.status(400).json({ message: "Task ID is required" });
 
-    // Check whether user already has an active activity
-    const activeActivity = await Activity.findOne({
+    const current = await Activity.findOne({
       user: req.user.id,
-      status: "active",
+      status: { $in: ["active", "paused"] },
     });
 
-    if (activeActivity) {
+    if (current)
       return res.status(400).json({
-        message: "You already have an active activity",
+        message: "You already have a current activity",
       });
-    }
 
-    const Task = require("../models/Task");
-
-    // Find the task belonging to this user
     const task = await Task.findOne({
       _id: taskId,
       user: req.user.id,
     });
 
-    if (!task) {
-      return res.status(404).json({
-        message: "Task not found",
-      });
-    }
+    if (!task)
+      return res.status(404).json({ message: "Task not found" });
 
-    // Create activity linked to task
     const activity = await Activity.create({
       user: req.user.id,
       task: task._id,
       name: task.title,
       startTime: new Date(),
+      duration: 0,
       status: "active",
     });
 
-    res.status(201).json({
-      message: "Activity started",
-      activity,
-    });
-
-  } //end try block
-  catch (error) {
+    res.status(201).json({ message: "Activity started", activity });
+  } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
-  }//end of catch block
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
-// PAUSE ACTIVITY
 const pauseActivity = async (req, res) => {
   try {
     const activity = await Activity.findOne({
@@ -70,37 +50,26 @@ const pauseActivity = async (req, res) => {
       status: "active",
     });
 
-    if (!activity) {
+    if (!activity)
       return res.status(404).json({
         message: "Active activity not found",
       });
-    }
 
-    const pausedAt = new Date();
+    const now = new Date();
 
-    // Add the current running session time to duration
-    activity.duration += pausedAt - activity.startTime;
-
-    activity.pausedAt = pausedAt;
+    activity.duration += now - activity.startTime;
+    activity.pausedAt = now;
     activity.status = "paused";
 
     await activity.save();
 
-    res.status(200).json({
-      message: "Activity paused successfully",
-      activity,
-    });
-
+    res.json({ message: "Activity paused", activity });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// RESUME ACTIVITY
 const resumeActivity = async (req, res) => {
   try {
     const activity = await Activity.findOne({
@@ -109,67 +78,47 @@ const resumeActivity = async (req, res) => {
       status: "paused",
     });
 
-    if (!activity) {
+    if (!activity)
       return res.status(404).json({
         message: "Paused activity not found",
       });
-    }
 
-    // Check whether another activity is currently active
-    const activeActivity = await Activity.findOne({
-      user: req.user.id,
-      status: "active",
-    });
-
-    if (activeActivity) {
-      return res.status(400).json({
-        message: "You already have another active activity",
-      });
-    }
-
-    // Start timing again from now
     activity.startTime = new Date();
     activity.pausedAt = null;
     activity.status = "active";
 
     await activity.save();
 
-    res.status(200).json({
-      message: "Activity resumed successfully",
-      activity,
-    });
-
+    res.json({ message: "Activity resumed", activity });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// STOP ACTIVITY
 const stopActivity = async (req, res) => {
   try {
     const activity = await Activity.findOne({
       _id: req.params.id,
       user: req.user.id,
-      status: "active",
+      status: {
+        $in: ["active", "paused"],
+      },
     });
 
     if (!activity) {
       return res.status(404).json({
-        message: "Active activity not found",
+        message: "Activity not found",
       });
     }
 
     const endTime = new Date();
 
+    if (activity.status === "active") {
+      activity.duration += endTime - activity.startTime;
+    }
+
     activity.endTime = endTime;
-
-    // Add only the currently running time
-    activity.duration += endTime - activity.startTime;
-
     activity.status = "completed";
     activity.pausedAt = null;
 
@@ -189,94 +138,175 @@ const stopActivity = async (req, res) => {
   }
 };
 
-// GET USER ACTIVITIES
 const getActivities = async (req, res) => {
   try {
     const activities = await Activity.find({
-      user: req.user.id, //This means User A cannot see User B's activities.
+      user: req.user.id,
     })
-    .populate("task", "title")
-    .sort({
-      createdAt: -1,
-    });
+      .populate("task", "title")
+      .sort({ createdAt: -1 });
 
-    res.status(200).json({
-      activities,
-    });
-
+    res.json({ activities });
   } catch (error) {
     console.error(error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// GET DAILY SUMMARY
+// const getDailySummary = async (req, res) => {
+//   try {
+//     // Start of today
+//     const start = new Date();
+//     start.setHours(0, 0, 0, 0);
+
+//     // Start of tomorrow
+//     const end = new Date(start);
+//     end.setDate(end.getDate() + 1);
+
+//     // Get ALL activities created today
+//     const activities = await Activity.find({
+//       user: req.user.id,
+//       createdAt: {
+//         $gte: start,
+//         $lt: end,
+//       },
+//     });
+
+//     // Get completed activities
+//     const completedActivities =
+//       activities.filter(
+//         (activity) =>
+//           activity.status === "completed"
+//       );
+
+//     // Calculate total tracked duration
+//     const totalDuration =
+//       completedActivities.reduce(
+//         (total, activity) =>
+//           total + activity.duration,
+//         0
+//       );
+
+//     res.json({
+//       date: start,
+
+//       // All today's activities
+//       activities,
+
+//       // Only completed activities
+//       completedActivities,
+
+//       // Total milliseconds tracked today
+//       totalDuration,
+//     });
+
+//   } catch (error) {
+
+//     console.error(error);
+
+//     res.status(500).json({
+//       message: "Server error",
+//     });
+
+//   }
+// };
+
 const getDailySummary = async (req, res) => {
   try {
     // Start of today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
 
     // Start of tomorrow
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
 
-    // Find today's completed activities
+    console.log("TODAY START:", start);
+console.log("TODAY END:", end);
+
+    // Get all activities that started today
     const activities = await Activity.find({
       user: req.user.id,
-      status: "completed",
       startTime: {
-        $gte: startOfDay,
-        $lt: endOfDay,
+        $gte: start,
+        $lt: end,
       },
-    }).sort({
-      startTime: -1,
     });
+    console.log("TODAY ACTIVITIES:", activities);
 
-    // Calculate total duration
-    const totalDuration = activities.reduce(
-      (total, activity) => total + activity.duration,
-      0
-    );
+    // Completed activities
+    const completedActivities =
+      activities.filter(
+        (activity) =>
+          activity.status === "completed"
+      );
 
-    res.status(200).json({
-      date: startOfDay,
+    // Calculate completed duration
+    let totalDuration =
+      completedActivities.reduce(
+        (total, activity) =>
+          total + activity.duration,
+        0
+      );
+
+    // Find today's active/paused activity
+    const currentActivity =
+      activities.find(
+        (activity) =>
+          activity.status === "active" ||
+          activity.status === "paused"
+      );
+
+    // If activity is currently running,
+    // include its live duration
+    if (
+      currentActivity &&
+      currentActivity.status === "active"
+    ) {
+      const now = new Date();
+
+      const liveDuration =
+        now - currentActivity.startTime;
+
+      totalDuration +=
+        currentActivity.duration +
+        liveDuration;
+    }
+
+    // If paused, include already saved duration
+    if (
+      currentActivity &&
+      currentActivity.status === "paused"
+    ) {
+      totalDuration +=
+        currentActivity.duration;
+    }
+
+    res.json({
+      date: start,
       activities,
+      completedActivities,
       totalDuration,
     });
 
   } catch (error) {
+
     console.error(error);
 
     res.status(500).json({
       message: "Server error",
     });
+
   }
 };
-
-// GET CURRENT ACTIVE ACTIVITY
 const getActiveActivity = async (req, res) => {
   try {
     const activity = await Activity.findOne({
       user: req.user.id,
-      status: {
-        $in: ["active", "paused"],
-      },
+      status: { $in: ["active", "paused"] },
     }).populate("task", "title");
 
-    if (!activity) {
-      return res.status(404).json({
-        message: "No current activity",
-      });
-    }
-
-    res.status(200).json({
-      activity,
-    });
-
+    res.json({ activity });
   } catch (error) {
     console.error(error);
 
@@ -285,7 +315,6 @@ const getActiveActivity = async (req, res) => {
     });
   }
 };
-
 module.exports = {
   startActivity,
   pauseActivity,

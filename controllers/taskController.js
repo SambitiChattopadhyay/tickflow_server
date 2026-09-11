@@ -48,7 +48,8 @@ const getTasks = async (req, res) => {
             $match: {
               user: task.user,
               task: task._id,
-            },
+              status:"completed",
+           },
           },
           {
             $group: {
@@ -84,16 +85,10 @@ const getTasks = async (req, res) => {
 };
 
 
-// UPDATE TASK STATUS
-const updateTaskStatus = async (req, res) => {
+// UPDATE TASK
+const updateTask = async (req, res) => {
   try {
-    const { status } = req.body;
-
-    if (!["pending", "completed"].includes(status)) {
-      return res.status(400).json({
-        message: "Status must be pending or completed",
-      });
-    }
+    const { title, status } = req.body;
 
     const task = await Task.findOne({
       _id: req.params.id,
@@ -106,7 +101,27 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
-    task.status = status;
+    // Update title if provided
+    if (title !== undefined) {
+      if (!title.trim()) {
+        return res.status(400).json({
+          message: "Task title cannot be empty",
+        });
+      }
+
+      task.title = title.trim();
+    }
+
+    // Update status if provided
+    if (status !== undefined) {
+      if (!["pending", "completed"].includes(status)) {
+        return res.status(400).json({
+          message: "Status must be pending or completed",
+        });
+      }
+
+      task.status = status;
+    }
 
     await task.save();
 
@@ -123,7 +138,6 @@ const updateTaskStatus = async (req, res) => {
     });
   }
 };
-
 
 // DELETE TASK
 const deleteTask = async (req, res) => {
@@ -162,6 +176,6 @@ const deleteTask = async (req, res) => {
 module.exports = {
   createTask,
   getTasks,
-  updateTaskStatus,
+  updateTask,
   deleteTask,
 };
